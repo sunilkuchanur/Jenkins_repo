@@ -14,17 +14,16 @@ pipeline {
            }
         }
 
-        stage('Build Docker'){
-            steps{
-                script{
-                    sh '''
-                    echo 'Buid Docker Image'
-                    docker build -t sunilkuchanur/cicd-e2e:${BUILD_NUMBER} .
-                    docker tag sunilkuchanur/cicd-e2e:${BUILD_NUMBER} sunilkuchanur/cicd-e2e:latest
-                    '''
-                }
-            }
+ stage('Build Docker') {
+    steps {
+        dir('python-jenkins-argocd-k8s') {
+            sh """
+                echo "Building Docker Image"
+                docker build -t sunilkuchanur/cicd-e2e:${BUILD_NUMBER} .
+            """
         }
+    }
+}
 
 stage('Push the artifacts') {
     steps {
