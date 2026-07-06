@@ -60,7 +60,7 @@ pipeline {
                             echo "===== Before Update ====="
                             cat deploy/deploy.yaml
 
-                            sed -i 's|image: sunilkuchanur/cicd-e2e:.*|image: sunilkuchanur/cicd-e2e:${BUILD_NUMBER}|g' deploy/deploy.yaml
+                            sed -i "s|^ *image:.*|        image: sunilkuchanur/cicd-e2e:${BUILD_NUMBER}|g" deploy/deploy.yaml
 
                             echo "===== After Update ====="
                             cat deploy/deploy.yaml
