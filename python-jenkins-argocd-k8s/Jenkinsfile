@@ -62,6 +62,9 @@ pipeline {
 
                             sed -i "s|^ *image:.*|        image: sunilkuchanur/cicd-e2e:${BUILD_NUMBER}|g" deploy/deploy.yaml
 
+                            echo "===== Git Diff ====="
+                            git diff deploy/deploy.yaml
+                            
                             echo "===== After Update ====="
                             cat deploy/deploy.yaml
 
