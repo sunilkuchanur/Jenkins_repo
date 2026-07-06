@@ -81,7 +81,14 @@ pipeline {
             }
         }
     }
-
+ stage('Workspace Info') {
+    steps {
+        sh '''
+            pwd
+            ls -la
+        '''
+    }
+}
     post {
         always {
             sh 'docker image prune -f'
