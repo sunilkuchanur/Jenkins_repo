@@ -1,90 +1,96 @@
 pipeline {
-    
-    agent any 
-    
+
+    agent any
+
     environment {
         IMAGE_TAG = "${BUILD_NUMBER}"
     }
-    
+
     stages {
-        
-        stage('Checkout'){
-           steps {
-             git branch: 'main', url: 'https://github.com/sunilkuchanur/Jenkins_repo.git'
-           }
+
+        stage('Checkout') {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/sunilkuchanur/Jenkins_repo.git'
+            }
         }
 
- stage('Build Docker') {
-    steps {
-        dir('python-jenkins-argocd-k8s') {
-            sh """
-                echo "Building Docker Image"
-                docker build -t sunilkuchanur/cicd-e2e:${BUILD_NUMBER} .
-            """
+        stage('Build Docker') {
+            steps {
+                dir('python-jenkins-argocd-k8s') {
+                    sh """
+                        echo "Building Docker Image"
+                        docker build -t sunilkuchanur/cicd-e2e:${BUILD_NUMBER} .
+                    """
+                }
+            }
         }
-    }
-}
 
-stage('Push the artifacts') {
-    steps {
-        withCredentials([usernamePassword(
-            credentialsId: 'dockerhub-creds',
-            usernameVariable: 'DOCKER_USERNAME',
-            passwordVariable: 'DOCKER_PASSWORD'
-        )]) {
+        stage('Push the artifacts') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USERNAME',
+                    passwordVariable: 'DOCKER_PASSWORD'
+                )]) {
 
-            sh '''
-                echo "$DOCKER_PASSWORD" | docker login \
-                    -u "$DOCKER_USERNAME" \
-                    --password-stdin
+                    dir('python-jenkins-argocd-k8s') {
+                        sh '''
+                            echo "$DOCKER_PASSWORD" | docker login \
+                                -u "$DOCKER_USERNAME" \
+                                --password-stdin
 
-                docker push sunilkuchanur/cicd-e2e:${BUILD_NUMBER}
-            '''
+                            docker push sunilkuchanur/cicd-e2e:${BUILD_NUMBER}
+                        '''
+                    }
+                }
+            }
         }
-    }
-}
-        
-stage('Update deploy.yaml & Push to GitHub') {
-    steps {
-        dir('python-jenkins-argocd-k8s') {
-            withCredentials([usernamePassword(
-                credentialsId: 'github-creds',
-                usernameVariable: 'GIT_USERNAME',
-                passwordVariable: 'GIT_PASSWORD'
-            )]) {
 
-                sh """
-                    echo "===== Before Update ====="
-                    cat deploy/deploy.yaml
+        stage('Update deploy.yaml & Push to GitHub') {
+            steps {
+                dir('python-jenkins-argocd-k8s') {
+                    withCredentials([usernamePassword(
+                        credentialsId: 'github-creds',
+                        usernameVariable: 'GIT_USERNAME',
+                        passwordVariable: 'GIT_PASSWORD'
+                    )]) {
 
-                    # Update Docker image tag
-                    sed -i 's|image: sunilkuchanur/cicd-e2e:.*|image: sunilkuchanur/cicd-e2e:${BUILD_NUMBER}|g' deploy/deploy.yaml
+                        sh """
+                            echo "===== Before Update ====="
+                            cat deploy/deploy.yaml
 
-                    echo "===== After Update ====="
-                    cat deploy/deploy.yaml
+                            sed -i 's|image: sunilkuchanur/cicd-e2e:.*|image: sunilkuchanur/cicd-e2e:${BUILD_NUMBER}|g' deploy/deploy.yaml
 
-                    # Configure Git
-                    git config user.email "jenkins@example.com"
-                    git config user.name "Jenkins"
+                            echo "===== After Update ====="
+                            cat deploy/deploy.yaml
 
-                    # Commit changes
-                    git add deploy/deploy.yaml
-                    git commit -m "Update image tag to ${BUILD_NUMBER}" || echo "No changes to commit"
+                            git config user.email "jenkins@example.com"
+                            git config user.name "Jenkins"
 
-                    # Push changes
-                    git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/sunilkuchanur/Jenkins_repo.git HEAD:main
-                """
+                            git add deploy/deploy.yaml
+                            git commit -m "Update image tag to ${BUILD_NUMBER}" || echo "No changes to commit"
+
+                            git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/sunilkuchanur/Jenkins_repo.git HEAD:main
+                        """
+                    }
+                }
             }
         }
     }
-}
-post {
-    always {
-        cleanWs()
-    }
-}
-post {
-    always {
-        sh 'docker image prune -f'
+
+    post {
+        always {
+            sh 'docker image prune -f'
+            cleanWs()
+        }
+
+        success {
+            echo "Pipeline completed successfully."
+        }
+
+        failure {
+            echo "Pipeline failed."
+        }
     }
 }
